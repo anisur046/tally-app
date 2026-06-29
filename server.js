@@ -138,7 +138,7 @@ app.get('/api/status', (req, res) => {
 // Admin Authentication
 app.post('/api/admin/login', (req, res) => {
   const { password } = req.body;
-  if (password === 'admin123') {
+  if (password === 'Admin@123') {
     res.json({ success: true });
   } else {
     res.status(401).json({ success: false, error: "Incorrect admin password." });

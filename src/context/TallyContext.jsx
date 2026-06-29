@@ -822,7 +822,7 @@ export const TallyProvider = ({ children }) => {
         return { success: false, error: "Could not connect to the licensing server. Please check the URL and status." };
       }
     } else {
-      if (password === 'admin123') {
+      if (password === 'Admin@123') {
         localStorage.setItem('tally_admin_logged_in', 'true');
         setIsAdminLoggedIn(true);
         return { success: true };
