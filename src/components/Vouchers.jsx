@@ -144,6 +144,14 @@ export default function Vouchers() {
     if (!date) return alert('Please specify voucher date');
     if (!voucherNo.trim()) return alert('Voucher number is required');
 
+    // Duplicate Voucher No Check
+    const voucherExists = transactions.some(
+      (tx) => tx.voucherNo.trim().toLowerCase() === voucherNo.trim().toLowerCase()
+    );
+    if (voucherExists) {
+      return alert(`Voucher with number "${voucherNo.trim()}" already exists! Please use a unique voucher number.`);
+    }
+
     let ledgerPostings = [];
     let transactionItems = [];
 
@@ -247,9 +255,18 @@ export default function Vouchers() {
       narration: narration.trim()
     });
 
+    // Calculate the next voucher number before state updates (offset by 2 as the transaction state hasn't updated yet)
+    const currentFiltered = transactions.filter((t) => t.voucherType === vType);
+    const code = vType === 'Sales' ? 'SAL' :
+                 vType === 'Purchase' ? 'PUR' :
+                 vType === 'Payment' ? 'PMT' :
+                 vType === 'Receipt' ? 'RCT' : 'JNL';
+    const nextCount = currentFiltered.length + 2;
+    const nextNo = `${code}-${String(nextCount).padStart(3, '0')}`;
+
     alert(`Voucher ${voucherNo} posted successfully!`);
     resetForm();
-    setVoucherNo(getNextVoucherNo(vType));
+    setVoucherNo(nextNo);
   };
 
   const formatCurrency = (val) => {

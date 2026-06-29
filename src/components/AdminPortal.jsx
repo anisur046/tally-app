@@ -8,7 +8,10 @@ export default function AdminPortal() {
     generateAndRegisterKey,
     globalRevokeDevice,
     globalDeleteLicense,
-    renewLicenseKey
+    renewLicenseKey,
+    licensingMode,
+    serverLicenses,
+    serverRegistry
   } = useContext(TallyContext);
 
   // Key generator form state
@@ -22,11 +25,11 @@ export default function AdminPortal() {
   // Active license list expansion state
   const [expandedKey, setExpandedKey] = useState(null);
 
-  const handleGenerate = (e) => {
+  const handleGenerate = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     if (!formUserId.trim()) return;
-    const res = generateAndRegisterKey(formUserId, formDeviceLimit, formValidityYears);
+    const res = await generateAndRegisterKey(formUserId, formDeviceLimit, formValidityYears);
     if (res.success) {
       setNewKey(res.key);
       setExpandedKey(res.key);
@@ -49,15 +52,21 @@ export default function AdminPortal() {
     alert('Key copied to clipboard!');
   };
 
-  // Helper to query active devices for a key from localStorage
+  // Helper to query active devices for a key
   const getActiveDevicesForKey = (key) => {
     try {
-      const central = JSON.parse(localStorage.getItem('tally_central_licenses')) || {};
-      return central[key]?.devices || [];
+      if (licensingMode === 'server') {
+        return serverRegistry[key]?.devices || [];
+      } else {
+        const central = JSON.parse(localStorage.getItem('tally_central_licenses')) || {};
+        return central[key]?.devices || [];
+      }
     } catch {
       return [];
     }
   };
+
+  const activeLicensesList = licensingMode === 'server' ? serverLicenses : generatedLicenses;
 
   const getLicenseStatus = (license) => {
     const isExpired = Date.now() > license.expiresAt;
@@ -165,12 +174,12 @@ export default function AdminPortal() {
           <div className="admin-card-new">
             <div className="admin-card-header">
               <Database size={18} style={{ color: '#10b981' }} />
-              <h3>Client License Database ({generatedLicenses.length})</h3>
+              <h3>Client License Database ({activeLicensesList.length})</h3>
             </div>
             
             <div className="admin-card-body" style={{ padding: 0 }}>
               <div className="license-table-container">
-                {generatedLicenses.length === 0 ? (
+                {activeLicensesList.length === 0 ? (
                   <div style={{ padding: '40px 20px', textAlign: 'center', color: 'var(--text-muted)' }}>
                     <ShieldAlert size={32} style={{ marginBottom: '12px', color: 'var(--text-muted)' }} />
                     <p>No license keys have been generated yet.</p>
@@ -187,7 +196,7 @@ export default function AdminPortal() {
                       </tr>
                     </thead>
                     <tbody>
-                      {generatedLicenses.map((lic) => {
+                      {activeLicensesList.map((lic) => {
                         const activeDevices = getActiveDevicesForKey(lic.key);
                         const isExpanded = expandedKey === lic.key;
                         const statusInfo = getLicenseStatus(lic);
@@ -223,19 +232,19 @@ export default function AdminPortal() {
                                     <Copy size={12} />
                                   </button>
                                   <button 
-                                    className="btn-icon" 
-                                    style={{ color: 'var(--color-error)' }}
-                                    onClick={() => {
-                                      if (window.confirm(`Revoke and DELETE this license for '${lic.userId}'? The client will be logged out and locked immediately.`)) {
-                                        globalDeleteLicense(lic.key);
-                                      }
-                                    }}
-                                    title="Revoke License completely"
-                                  >
-                                    <Trash2 size={12} />
-                                  </button>
-                                </div>
-                              </td>
+                                     className="btn-icon" 
+                                     style={{ color: 'var(--color-error)' }}
+                                     onClick={async () => {
+                                       if (window.confirm(`Revoke and DELETE this license for '${lic.userId}'? The client will be logged out and locked immediately.`)) {
+                                         await globalDeleteLicense(lic.key);
+                                       }
+                                     }}
+                                     title="Revoke License completely"
+                                   >
+                                     <Trash2 size={12} />
+                                   </button>
+                                 </div>
+                               </td>
                             </tr>
                             
                             {/* Expandable Device Sessions Row */}
@@ -260,9 +269,9 @@ export default function AdminPortal() {
                                             </div>
                                             <button 
                                               className="btn-revoke-sub"
-                                              onClick={() => {
+                                              onClick={async () => {
                                                 if (window.confirm(`Revoke session for ${dev.deviceName}?`)) {
-                                                  globalRevokeDevice(lic.key, dev.deviceId);
+                                                  await globalRevokeDevice(lic.key, dev.deviceId);
                                                   // Keep expanded
                                                   setExpandedKey(lic.key);
                                                 }
@@ -302,22 +311,22 @@ export default function AdminPortal() {
                                            <option value="5">Extend +5 Years</option>
                                          </select>
                                          <button 
-                                           className="btn-success" 
-                                           style={{ padding: '6px 12px', fontSize: '0.75rem' }}
-                                           onClick={() => {
-                                             const selectEl = document.getElementById(`renew-years-${lic.key}`);
-                                             const years = parseFloat(selectEl.value);
-                                             const res = renewLicenseKey(lic.key, years);
-                                             if (res.success) {
-                                               alert(years > 0 ? `License successfully extended!` : `License validity successfully decreased!`);
-                                               setExpandedKey(res.key);
-                                             } else {
-                                               alert(`Failed to adjust license: ${res.error}`);
-                                             }
-                                           }}
-                                         >
-                                           Apply Adjustment
-                                         </button>
+                                            className="btn-success" 
+                                            style={{ padding: '6px 12px', fontSize: '0.75rem' }}
+                                            onClick={async () => {
+                                              const selectEl = document.getElementById(`renew-years-${lic.key}`);
+                                              const years = parseFloat(selectEl.value);
+                                              const res = await renewLicenseKey(lic.key, years);
+                                              if (res.success) {
+                                                alert(years > 0 ? `License successfully extended!` : `License validity successfully decreased!`);
+                                                setExpandedKey(res.key);
+                                              } else {
+                                                alert(`Failed to adjust license: ${res.error}`);
+                                              }
+                                            }}
+                                          >
+                                            Apply Adjustment
+                                          </button>
                                        </div>
                                      </div>
                                   </div>

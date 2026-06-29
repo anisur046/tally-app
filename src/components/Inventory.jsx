@@ -1,14 +1,18 @@
 import React, { useContext, useState } from 'react';
 import { TallyContext } from '../context/TallyContext';
 import { calculateInventoryValuation } from '../utils/accountingEngine';
-import { Plus, Search, Package, X } from 'lucide-react';
+import { Plus, Search, Package, X, Edit } from 'lucide-react';
 
 export default function Inventory() {
-  const { stockItems, transactions, addStockItem } = useContext(TallyContext);
+  const { stockItems, transactions, addStockItem, updateStockItem } = useContext(TallyContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
 
-  // New Stock Item Form State
+  // Editing State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingStockItemId, setEditingStockItemId] = useState(null);
+
+  // Stock Item Form State
   const [name, setName] = useState('');
   const [unit, setUnit] = useState('pcs');
   const [openingQty, setOpeningQty] = useState('0');
@@ -20,25 +24,9 @@ export default function Inventory() {
   // Compute FIFO Stock Valuations
   const { stockSummary } = calculateInventoryValuation(stockItems, transactions);
 
-  const handleCreate = (e) => {
-    e.preventDefault();
-    if (!name.trim()) return alert('Item name is required!');
-
-    // Duplicate check
-    const exists = stockItems.some(i => i.name.toLowerCase() === name.trim().toLowerCase());
-    if (exists) return alert('A stock item with this name already exists!');
-
-    addStockItem({
-      name: name.trim(),
-      unit,
-      openingQty: Number(openingQty) || 0,
-      openingRate: Number(openingRate) || 0,
-      purchaseRate: Number(purchaseRate) || Number(openingRate) || 0,
-      saleRate: Number(saleRate) || 0,
-      gstRate: Number(gstRate) || 0
-    });
-
-    // Reset Form
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setEditingStockItemId(null);
     setName('');
     setUnit('pcs');
     setOpeningQty('0');
@@ -46,6 +34,59 @@ export default function Inventory() {
     setPurchaseRate('0');
     setSaleRate('0');
     setGstRate('18');
+    setShowModal(true);
+  };
+
+  const handleOpenEditModal = (item) => {
+    setIsEditing(true);
+    setEditingStockItemId(item.id);
+    setName(item.name);
+    setUnit(item.unit);
+    setOpeningQty(String(item.openingQty));
+    setOpeningRate(String(item.openingRate));
+    setPurchaseRate(String(item.purchaseRate));
+    setSaleRate(String(item.saleRate));
+    setGstRate(String(item.gstRate));
+    setShowModal(true);
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (!name.trim()) return alert('Item name is required!');
+
+    // Duplicate check (excluding the current stock item being edited)
+    const exists = stockItems.some(i => 
+      i.name.toLowerCase() === name.trim().toLowerCase() && 
+      (!isEditing || i.id !== editingStockItemId)
+    );
+    if (exists) return alert('A stock item with this name already exists!');
+
+    const stockItemData = {
+      name: name.trim(),
+      unit,
+      openingQty: Number(openingQty) || 0,
+      openingRate: Number(openingRate) || 0,
+      purchaseRate: Number(purchaseRate) || Number(openingRate) || 0,
+      saleRate: Number(saleRate) || 0,
+      gstRate: Number(gstRate) || 0
+    };
+
+    if (isEditing) {
+      updateStockItem(editingStockItemId, stockItemData);
+    } else {
+      addStockItem(stockItemData);
+    }
+
+    // Reset Form & Close Modal
+    setName('');
+    setUnit('pcs');
+    setOpeningQty('0');
+    setOpeningRate('0');
+    setPurchaseRate('0');
+    setSaleRate('0');
+    setGstRate('18');
+    setIsEditing(false);
+    setEditingStockItemId(null);
     setShowModal(false);
   };
 
@@ -72,7 +113,7 @@ export default function Inventory() {
           </p>
         </div>
 
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn-primary" onClick={handleOpenCreateModal}>
           <Plus size={16} /> Add Stock Item
         </button>
       </div>
@@ -106,12 +147,13 @@ export default function Inventory() {
                 <th className="text-right">Outwards (Sales)</th>
                 <th className="text-right">Closing Qty</th>
                 <th className="text-right">Closing Value (FIFO)</th>
+                <th className="text-center" style={{ width: '100px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredItems.length === 0 ? (
                 <tr>
-                  <td colSpan="8" className="text-center" style={{ color: 'var(--text-muted)', padding: '24px' }}>
+                  <td colSpan="9" className="text-center" style={{ color: 'var(--text-muted)', padding: '24px' }}>
                     No stock items configured. Click "Add Stock Item" to create a new record.
                   </td>
                 </tr>
@@ -150,6 +192,15 @@ export default function Inventory() {
                       <td className="text-right" style={{ fontWeight: 700, fontFamily: 'monospace' }}>
                         {formatCurrency(summary.closingVal)}
                       </td>
+                      <td className="text-center">
+                        <button 
+                          className="btn-secondary" 
+                          style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                          onClick={() => handleOpenEditModal(item)}
+                        >
+                          <Edit size={12} /> Edit
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -159,18 +210,18 @@ export default function Inventory() {
         </div>
       </div>
 
-      {/* Create Stock Item Modal */}
+      {/* Create / Edit Stock Item Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="glass-card modal-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
-                <Package size={18} /> New Stock Item
+                <Package size={18} /> {isEditing ? 'Edit Stock Item' : 'New Stock Item'}
               </h3>
               <X size={18} style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={() => setShowModal(false)} />
             </div>
 
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Stock Item Name</label>
                 <input 
@@ -266,7 +317,7 @@ export default function Inventory() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Add Item
+                  {isEditing ? 'Update Item' : 'Add Item'}
                 </button>
               </div>
             </form>

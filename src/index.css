@@ -1585,3 +1585,44 @@ button {
   font-size: 0.75rem;
   margin-top: 12px;
 }
+
+/* Print Media Styles */
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+  .sidebar,
+  .top-navbar,
+  .report-tabs,
+  .filter-bar,
+  .no-print,
+  button {
+    display: none !important;
+  }
+  .main-content {
+    margin-left: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+  }
+  .glass-card {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    color: black !important;
+  }
+  .view-container {
+    padding: 0 !important;
+  }
+  .tally-table th {
+    background: #f3f4f6 !important;
+    color: black !important;
+    border-bottom: 2px solid #e5e7eb !important;
+  }
+  .tally-table td {
+    color: black !important;
+    border-bottom: 1px solid #e5e7eb !important;
+  }
+}

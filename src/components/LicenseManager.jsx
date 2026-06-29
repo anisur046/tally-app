@@ -11,7 +11,10 @@ export default function LicenseManager() {
     licenseDetails,
     deactivateLicense,
     revokeDevice,
-    updateDeviceName
+    updateDeviceName,
+    licensingMode,
+    serverUrl,
+    serverStatus
   } = useContext(TallyContext);
 
   // States for renaming current device
@@ -172,6 +175,55 @@ export default function LicenseManager() {
                     </div>
                   )}
                 </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Licensing Server Profile Card */}
+          <div className="license-card-new">
+            <div className="license-card-header">
+              <span style={{ fontSize: '1.2rem', marginRight: '8px' }}>🔌</span>
+              <h3>Licensing Server Profile</h3>
+            </div>
+            
+            <div className="license-card-body">
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div>
+                  <span className="info-label">Licensing Mode</span>
+                  <div style={{ marginTop: '4px', fontWeight: 600, color: 'var(--text-primary)', fontSize: '0.85rem' }}>
+                    {licensingMode === 'server' ? 'Central Network Server' : 'Offline Simulated Sandbox'}
+                  </div>
+                </div>
+
+                {licensingMode === 'server' && (
+                  <>
+                    <div>
+                      <span className="info-label">Central Server URL</span>
+                      <div style={{ marginTop: '4px' }}>
+                        <code className="code-id">{serverUrl || window.location.origin}</code>
+                      </div>
+                    </div>
+
+                    <div>
+                      <span className="info-label">Connection Status</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                        {serverStatus === 'connected' ? (
+                          <span style={{ color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                            ● Connected
+                          </span>
+                        ) : serverStatus === 'disconnected' ? (
+                          <span style={{ color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem' }}>
+                            ● Disconnected
+                          </span>
+                        ) : (
+                          <span style={{ color: '#eab308', fontWeight: 600, fontSize: '0.8rem' }}>
+                            ● Not Checked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

@@ -1,20 +1,26 @@
 import { GROUP_MAP, LEDGER_SUBGROUPS, LEDGER_GROUPS } from './mockData';
 
 // Calculate the net balance of a single ledger
-export function getLedgerBalance(ledger, transactions) {
+export function getLedgerBalance(ledger, transactions, fromDate, toDate, isPeriod = false) {
   let drTotal = 0;
   let crTotal = 0;
 
-  // Add opening balance
-  if (ledger.balanceType === 'Dr') {
-    drTotal += ledger.openingBalance || 0;
-  } else {
-    crTotal += ledger.openingBalance || 0;
+  // Add opening balance if it's not a period-based report
+  if (!isPeriod) {
+    if (ledger.balanceType === 'Dr') {
+      drTotal += ledger.openingBalance || 0;
+    } else {
+      crTotal += ledger.openingBalance || 0;
+    }
   }
 
   // Add transaction postings
   transactions.forEach((tx) => {
     if (tx.ledgerPostings) {
+      // Date filters
+      if (toDate && tx.date > toDate) return;
+      if (isPeriod && fromDate && tx.date < fromDate) return;
+
       tx.ledgerPostings.forEach((post) => {
         if (post.ledgerId === ledger.id) {
           if (post.type === 'Dr') {
@@ -54,7 +60,76 @@ export function getLedgerBalance(ledger, transactions) {
 }
 
 // Calculate closing stock and COGS using FIFO valuation
-export function calculateInventoryValuation(stockItems, transactions) {
+export function calculateInventoryValuation(stockItems, transactions, fromDate, toDate) {
+  // If fromDate is specified, run period-based calculations
+  if (fromDate) {
+    const txBefore = transactions.filter((tx) => tx.date < fromDate);
+    const txUpTo = toDate ? transactions.filter((tx) => tx.date <= toDate) : transactions;
+
+    // Get closing stock up to toDate
+    const { stockSummary: closingSummary, totalClosingStockValue } = calculateInventoryValuation(stockItems, txUpTo);
+    // Get opening stock before fromDate
+    const { stockSummary: openingSummary } = calculateInventoryValuation(stockItems, txBefore);
+
+    const stockSummary = {};
+    stockItems.forEach((item) => {
+      const closing = closingSummary[item.id];
+      const opening = openingSummary[item.id];
+
+      const opQty = opening ? opening.closingQty : item.openingQty || 0;
+      const opVal = opening ? opening.closingVal : (item.openingQty || 0) * (item.openingRate || 0);
+
+      let inwardsQty = 0;
+      let inwardsVal = 0;
+      let outwardsQty = 0;
+      let outwardsVal = 0;
+
+      transactions.forEach((tx) => {
+        if (tx.date < fromDate) return;
+        if (toDate && tx.date > toDate) return;
+        if (!tx.items) return;
+
+        if (tx.voucherType === 'Purchase') {
+          tx.items.forEach((line) => {
+            if (line.stockItemId === item.id) {
+              inwardsQty += Number(line.qty);
+              inwardsVal += Number(line.qty) * Number(line.rate);
+            }
+          });
+        } else if (tx.voucherType === 'Sales') {
+          tx.items.forEach((line) => {
+            if (line.stockItemId === item.id) {
+              outwardsQty += Number(line.qty);
+              outwardsVal += Number(line.qty) * Number(line.rate);
+            }
+          });
+        }
+      });
+
+      stockSummary[item.id] = {
+        id: item.id,
+        name: item.name,
+        unit: item.unit,
+        openingQty: opQty,
+        openingVal: opVal,
+        inwardsQty,
+        inwardsVal,
+        outwardsQty,
+        outwardsVal,
+        closingQty: closing ? closing.closingQty : 0,
+        closingRate: closing ? closing.closingRate : item.purchaseRate || 0,
+        closingVal: closing ? closing.closingVal : 0,
+        cogs: closing ? closing.cogs : 0
+      };
+    });
+
+    return {
+      stockSummary,
+      totalClosingStockValue
+    };
+  }
+
+  // Original single-date/cumulative implementation
   const valuation = {};
 
   // Initialize with opening stock batches
@@ -70,8 +145,9 @@ export function calculateInventoryValuation(stockItems, transactions) {
     };
   });
 
+  const txUpTo = toDate ? transactions.filter(t => t.date <= toDate) : transactions;
   // Sort transactions by date to ensure proper FIFO chronological sequence
-  const sortedTx = [...transactions].sort((a, b) => new Date(a.date) - new Date(b.date));
+  const sortedTx = [...txUpTo].sort((a, b) => new Date(a.date) - new Date(b.date));
 
   sortedTx.forEach((tx) => {
     if (!tx.items || tx.items.length === 0) return;
@@ -161,12 +237,12 @@ export function calculateInventoryValuation(stockItems, transactions) {
 }
 
 // Generate Trial Balance report
-export function getTrialBalance(ledgers, transactions) {
+export function getTrialBalance(ledgers, transactions, fromDate, toDate) {
   let totalDr = 0;
   let totalCr = 0;
 
   const rows = ledgers.map((ledger) => {
-    const bal = getLedgerBalance(ledger, transactions);
+    const bal = getLedgerBalance(ledger, transactions, null, toDate, false);
     const dr = bal.type === 'Dr' ? bal.amount : 0;
     const cr = bal.type === 'Cr' ? bal.amount : 0;
     totalDr += dr;
@@ -190,17 +266,21 @@ export function getTrialBalance(ledgers, transactions) {
 }
 
 // Generate Profit & Loss Statement
-export function getProfitAndLoss(ledgers, transactions, stockItems) {
-  // 1. Get Inventory Closing Stock
-  const { stockSummary, totalClosingStockValue } = calculateInventoryValuation(stockItems, transactions);
+export function getProfitAndLoss(ledgers, transactions, stockItems, fromDate, toDate) {
+  // 1. Get Inventory Closing Stock and Opening Stock
+  const txBefore = fromDate ? transactions.filter((tx) => tx.date < fromDate) : [];
+  const txUpTo = toDate ? transactions.filter((tx) => tx.date <= toDate) : transactions;
 
-  let openingStockValue = stockItems.reduce((sum, item) => sum + (item.openingQty * item.openingRate), 0);
+  const openingStockValue = fromDate
+    ? calculateInventoryValuation(stockItems, txBefore).totalClosingStockValue
+    : stockItems.reduce((sum, item) => sum + (item.openingQty * item.openingRate), 0);
 
-  // 2. Classify Sales & Purchases
+  const { totalClosingStockValue } = calculateInventoryValuation(stockItems, txUpTo);
+
+  // 2. Classify Sales & Purchases for the period
   let salesTotal = 0;
   let purchasesTotal = 0;
   let directExpenses = 0;
-  let directIncomes = 0;
   let indirectExpenses = [];
   let indirectIncomes = [];
 
@@ -208,7 +288,7 @@ export function getProfitAndLoss(ledgers, transactions, stockItems) {
   let indirectIncomesTotal = 0;
 
   ledgers.forEach((ledger) => {
-    const bal = getLedgerBalance(ledger, transactions);
+    const bal = getLedgerBalance(ledger, transactions, fromDate, toDate, true);
     if (ledger.subgroup === LEDGER_SUBGROUPS.SALES) {
       salesTotal += bal.amount;
     } else if (ledger.subgroup === LEDGER_SUBGROUPS.PURCHASE) {
@@ -248,9 +328,10 @@ export function getProfitAndLoss(ledgers, transactions, stockItems) {
 }
 
 // Generate Balance Sheet
-export function getBalanceSheet(ledgers, transactions, stockItems) {
-  const { totalClosingStockValue } = calculateInventoryValuation(stockItems, transactions);
-  const pl = getProfitAndLoss(ledgers, transactions, stockItems);
+export function getBalanceSheet(ledgers, transactions, stockItems, fromDate, toDate) {
+  const txUpTo = toDate ? transactions.filter((tx) => tx.date <= toDate) : transactions;
+  const { totalClosingStockValue } = calculateInventoryValuation(stockItems, txUpTo);
+  const pl = getProfitAndLoss(ledgers, transactions, stockItems, null, toDate);
   const netProfit = pl.netProfit;
 
   const assetsList = [];
@@ -264,13 +345,12 @@ export function getBalanceSheet(ledgers, transactions, stockItems) {
   totalAssets += totalClosingStockValue;
 
   ledgers.forEach((ledger) => {
-    const bal = getLedgerBalance(ledger, transactions);
+    const bal = getLedgerBalance(ledger, transactions, null, toDate, false);
     if (bal.amount === 0 && ledger.openingBalance === 0) return;
 
     const primaryGroup = GROUP_MAP[ledger.subgroup];
 
     if (primaryGroup === LEDGER_GROUPS.ASSETS) {
-      // Exclude zero-balance customers/banks if they are completely empty
       assetsList.push({ name: ledger.name, amount: bal.amount, subgroup: ledger.subgroup });
       totalAssets += bal.amount;
     } else if (primaryGroup === LEDGER_GROUPS.LIABILITIES) {

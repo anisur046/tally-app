@@ -1,0 +1,26 @@
+{
+  "licenses": [
+    {
+      "key": "TALLY-eyJ1c2VySWQiOiJjbGllbnQxIiwiZGV2aWNlTGltaXQiOjEsInZhbGlkaXR5WWVhcnMiOjEsImNyZWF0ZWRBdCI6MTc4MjcwMDQ2ODE1NCwibm9uY2UiOiJmcTdrYjRmIiwic2lnbmF0dXJlIjoiNjQxMmJhNDcifQ==",
+      "userId": "client1",
+      "deviceLimit": 1,
+      "validityYears": 1,
+      "createdAt": 1782700468154,
+      "expiresAt": 1814258068154
+    }
+  ],
+  "central_registry": {
+    "TALLY-eyJ1c2VySWQiOiJjbGllbnQxIiwiZGV2aWNlTGltaXQiOjEsInZhbGlkaXR5WWVhcnMiOjEsImNyZWF0ZWRBdCI6MTc4MjcwMDQ2ODE1NCwibm9uY2UiOiJmcTdrYjRmIiwic2lnbmF0dXJlIjoiNjQxMmJhNDcifQ==": {
+      "userId": "client1",
+      "deviceLimit": 1,
+      "expiresAt": 1814258068154,
+      "devices": [
+        {
+          "deviceId": "DEV-XM7S9",
+          "deviceName": "Workstation 1",
+          "activatedAt": 1782701919818
+        }
+      ]
+    }
+  }
+}

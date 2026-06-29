@@ -12,7 +12,13 @@ import { TallyContext, TallyProvider } from './context/TallyContext';
 import { BookOpen } from 'lucide-react';
 
 function AppContent() {
-  const { activeView, companyDetails, activationState, isAdminLoggedIn } = useContext(TallyContext);
+  const { activeView, setActiveView, companyDetails, activationState, isAdminLoggedIn } = useContext(TallyContext);
+
+  React.useEffect(() => {
+    if (activeView === 'admin_portal' && !isAdminLoggedIn) {
+      setActiveView('dashboard');
+    }
+  }, [activeView, isAdminLoggedIn, setActiveView]);
 
   if (activationState !== 'activated' && !isAdminLoggedIn) {
     return <ActivationScreen />;
@@ -50,7 +56,7 @@ function AppContent() {
           {activeView === 'inventory' && <Inventory />}
           {activeView === 'reports' && <Reports />}
           {activeView === 'license' && <LicenseManager />}
-          {activeView === 'admin_portal' && <AdminPortal />}
+          {activeView === 'admin_portal' && isAdminLoggedIn && <AdminPortal />}
         </div>
       </main>
     </div>

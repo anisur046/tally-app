@@ -10,8 +10,31 @@ export default function ActivationScreen() {
     licenseDetails,
     activateLicense,
     adminLogin,
-    setActiveView
+    setActiveView,
+    importData,
+    licensingMode,
+    setLicensingMode,
+    serverUrl,
+    setServerUrl,
+    serverStatus,
+    checkServerConnection
   } = useContext(TallyContext);
+
+  const [showSettings, setShowSettings] = useState(false);
+  const [tempServerUrl, setTempServerUrl] = useState(serverUrl);
+  const [testingConnection, setTestingConnection] = useState(false);
+
+  const handleTestConnection = async () => {
+    setTestingConnection(true);
+    await checkServerConnection(tempServerUrl);
+    setTestingConnection(false);
+  };
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    setServerUrl(tempServerUrl);
+    alert("Server URL settings saved successfully!");
+  };
 
   const [inputUserId, setInputUserId] = useState('');
   const [inputKey, setInputKey] = useState('');
@@ -23,12 +46,12 @@ export default function ActivationScreen() {
   const [adminPassword, setAdminPassword] = useState('');
   const [adminError, setAdminError] = useState('');
 
-  const handleActivate = (e) => {
+  const handleActivate = async (e) => {
     e.preventDefault();
     setErrorMsg('');
     setSuccessMsg('');
 
-    const res = activateLicense(inputUserId, inputKey);
+    const res = await activateLicense(inputUserId, inputKey);
     if (res.success) {
       setSuccessMsg("Application activated successfully!");
     } else {
@@ -36,10 +59,10 @@ export default function ActivationScreen() {
     }
   };
 
-  const handleAdminLoginSubmit = (e) => {
+  const handleAdminLoginSubmit = async (e) => {
     e.preventDefault();
     setAdminError('');
-    const res = adminLogin(adminPassword);
+    const res = await adminLogin(adminPassword);
     if (res.success) {
       setAdminPassword('');
       setActiveView('admin_portal');
@@ -66,6 +89,12 @@ export default function ActivationScreen() {
         return {
           title: "Invalid Activation Key",
           desc: "The username or license key entered is incorrect. Keys must match the registered User Login ID exactly.",
+          type: "error"
+        };
+      case 'server_disconnected':
+        return {
+          title: "Licensing Server Disconnected",
+          desc: `Cannot connect to the central licensing server at '${serverUrl || 'http://10.179.213.170/'}'. Please verify the server is running on the host and check connection settings below.`,
           type: "error"
         };
       default:
@@ -195,6 +224,91 @@ export default function ActivationScreen() {
               </span>
             </div>
 
+            {/* Collapsible Server Connection settings */}
+            <div style={{ borderTop: '1px solid var(--border-color)', marginTop: '20px', paddingTop: '12px' }}>
+              <button 
+                type="button" 
+                className="admin-link-btn" 
+                onClick={() => setShowSettings(!showSettings)}
+                style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', fontSize: '0.8rem', color: '#818cf8', fontWeight: 600 }}
+              >
+                🔌 {showSettings ? "Hide Server Settings" : "Show Licensing Server Settings"}
+              </button>
+              
+              {showSettings && (
+                <div style={{ marginTop: '12px', background: 'rgba(255, 255, 255, 0.02)', padding: '12px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', textAlign: 'left' }}>
+                  <div className="form-group">
+                    <label style={{ fontSize: '0.7rem' }}>Licensing Mode</label>
+                    <select
+                      value={licensingMode}
+                      onChange={(e) => setLicensingMode(e.target.value)}
+                      style={{ background: 'var(--bg-input)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', width: '100%', padding: '6px 8px', borderRadius: 'var(--radius-sm)', fontSize: '0.8rem' }}
+                    >
+                      <option value="server">Central Network Server</option>
+                      <option value="simulated">Simulated Offline Mode</option>
+                    </select>
+                  </div>
+                  
+                  {licensingMode === 'server' && (
+                    <>
+                      <div className="form-group" style={{ marginTop: '8px' }}>
+                        <label style={{ fontSize: '0.7rem' }}>Licensing Server URL</label>
+                        <input
+                          type="text"
+                          placeholder="e.g. http://localhost:3001 or empty for relative"
+                          value={tempServerUrl}
+                          onChange={(e) => setTempServerUrl(e.target.value)}
+                          style={{ padding: '6px 8px', fontSize: '0.8rem' }}
+                        />
+                        <span className="input-tip" style={{ fontSize: '0.65rem', marginTop: '2px', display: 'block', color: 'var(--text-muted)' }}>
+                          Leave blank to use the active web host URL.
+                        </span>
+                      </div>
+                      
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '8px', justifyContent: 'space-between' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span style={{ fontSize: '0.7rem', color: 'var(--text-secondary)' }}>Status:</span>
+                          {serverStatus === 'connected' ? (
+                            <span style={{ fontSize: '0.7rem', color: '#10b981', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              ● Connected
+                            </span>
+                          ) : serverStatus === 'disconnected' ? (
+                            <span style={{ fontSize: '0.7rem', color: '#ef4444', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '2px' }}>
+                              ● Disconnected
+                            </span>
+                          ) : (
+                            <span style={{ fontSize: '0.7rem', color: '#eab308', fontWeight: 600 }}>
+                              ● Not Checked
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div style={{ display: 'flex', gap: '6px' }}>
+                          <button
+                            type="button"
+                            className="btn-secondary"
+                            onClick={handleTestConnection}
+                            disabled={testingConnection}
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', margin: 0 }}
+                          >
+                            {testingConnection ? "Pinging..." : "Ping"}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-primary"
+                            onClick={handleSaveSettings}
+                            style={{ padding: '4px 8px', fontSize: '0.75rem', margin: 0, background: '#818cf8', border: 'none' }}
+                          >
+                            Apply
+                          </button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+
             {/* Gate to Admin Owner portal */}
             <div style={{ textAlign: 'center', marginTop: '16px', fontSize: '0.75rem' }}>
               <span style={{ color: 'var(--text-muted)' }}>Are you the Admin Owner? </span>
@@ -205,6 +319,26 @@ export default function ActivationScreen() {
               >
                 Go to Admin Portal
               </button>
+            </div>
+
+            {/* Restore from Backup option */}
+            <div style={{ textAlign: 'center', marginTop: '16px', borderTop: '1px solid var(--border-color)', paddingTop: '16px', fontSize: '0.75rem' }}>
+              <span style={{ color: 'var(--text-muted)' }}>Have a system backup? </span>
+              <button 
+                type="button" 
+                className="admin-link-btn" 
+                onClick={() => document.getElementById('activation-restore-input')?.click()}
+                style={{ color: '#818cf8', fontWeight: 600 }}
+              >
+                Restore System Backup
+              </button>
+              <input 
+                type="file" 
+                id="activation-restore-input" 
+                onChange={importData} 
+                style={{ display: 'none' }} 
+                accept=".json" 
+              />
             </div>
           </div>
         )}

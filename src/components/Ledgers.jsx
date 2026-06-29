@@ -2,38 +2,73 @@ import React, { useContext, useState } from 'react';
 import { TallyContext } from '../context/TallyContext';
 import { LEDGER_SUBGROUPS, GROUP_MAP } from '../utils/mockData';
 import { getLedgerBalance } from '../utils/accountingEngine';
-import { Plus, Search, BookOpen, X } from 'lucide-react';
+import { Plus, Search, BookOpen, X, Edit } from 'lucide-react';
 
 export default function Ledgers() {
-  const { ledgers, transactions, addLedger } = useContext(TallyContext);
+  const { ledgers, transactions, addLedger, updateLedger } = useContext(TallyContext);
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
 
-  // New Ledger Form State
+  // Editing State
+  const [isEditing, setIsEditing] = useState(false);
+  const [editingLedgerId, setEditingLedgerId] = useState(null);
+
+  // Ledger Form State
   const [name, setName] = useState('');
   const [subgroup, setSubgroup] = useState(LEDGER_SUBGROUPS.INDIRECT_EXPENSES);
   const [openingBalance, setOpeningBalance] = useState('0');
   const [balanceType, setBalanceType] = useState('Dr');
 
-  const handleCreate = (e) => {
+  const handleOpenCreateModal = () => {
+    setIsEditing(false);
+    setEditingLedgerId(null);
+    setName('');
+    setSubgroup(LEDGER_SUBGROUPS.INDIRECT_EXPENSES);
+    setOpeningBalance('0');
+    setBalanceType('Dr');
+    setShowModal(true);
+  };
+
+  const handleOpenEditModal = (ledger) => {
+    setIsEditing(true);
+    setEditingLedgerId(ledger.id);
+    setName(ledger.name);
+    setSubgroup(ledger.subgroup);
+    setOpeningBalance(String(ledger.openingBalance));
+    setBalanceType(ledger.balanceType);
+    setShowModal(true);
+  };
+
+  const handleSubmit = (e) => {
     e.preventDefault();
     if (!name.trim()) return alert('Ledger name is required!');
 
-    // Duplicate check
-    const exists = ledgers.some(l => l.name.toLowerCase() === name.trim().toLowerCase());
+    // Duplicate check (excluding the current ledger being edited)
+    const exists = ledgers.some(l => 
+      l.name.toLowerCase() === name.trim().toLowerCase() && 
+      (!isEditing || l.id !== editingLedgerId)
+    );
     if (exists) return alert('A ledger with this name already exists!');
 
-    addLedger({
+    const ledgerData = {
       name: name.trim(),
       subgroup,
       openingBalance: Number(openingBalance) || 0,
       balanceType
-    });
+    };
 
-    // Reset Form
+    if (isEditing) {
+      updateLedger(editingLedgerId, ledgerData);
+    } else {
+      addLedger(ledgerData);
+    }
+
+    // Reset Form & Close Modal
     setName('');
     setOpeningBalance('0');
     setBalanceType('Dr');
+    setIsEditing(false);
+    setEditingLedgerId(null);
     setShowModal(false);
   };
 
@@ -61,7 +96,7 @@ export default function Ledgers() {
           </p>
         </div>
 
-        <button className="btn-primary" onClick={() => setShowModal(true)}>
+        <button className="btn-primary" onClick={handleOpenCreateModal}>
           <Plus size={16} /> Add Ledger Account
         </button>
       </div>
@@ -92,12 +127,13 @@ export default function Ledgers() {
                 <th>Primary Group</th>
                 <th className="text-right">Opening Balance</th>
                 <th className="text-right">Current Ledger Balance</th>
+                <th className="text-center" style={{ width: '100px' }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredLedgers.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="text-center" style={{ color: 'var(--text-muted)', padding: '24px' }}>
+                  <td colSpan="6" className="text-center" style={{ color: 'var(--text-muted)', padding: '24px' }}>
                     No matching ledgers found. Click "Add Ledger Account" to create a new one.
                   </td>
                 </tr>
@@ -125,6 +161,15 @@ export default function Ledgers() {
                           : '0.00'
                         }
                       </td>
+                      <td className="text-center">
+                        <button 
+                          className="btn-secondary" 
+                          style={{ padding: '4px 8px', display: 'inline-flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem' }}
+                          onClick={() => handleOpenEditModal(ledger)}
+                        >
+                          <Edit size={12} /> Edit
+                        </button>
+                      </td>
                     </tr>
                   );
                 })
@@ -134,18 +179,18 @@ export default function Ledgers() {
         </div>
       </div>
 
-      {/* Create Ledger Modal */}
+      {/* Create / Edit Ledger Modal */}
       {showModal && (
         <div className="modal-overlay">
           <div className="glass-card modal-content">
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', borderBottom: '1px solid var(--border-color)', paddingBottom: '12px' }}>
               <h3 style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '1.1rem' }}>
-                <BookOpen size={18} /> New Ledger Account
+                <BookOpen size={18} /> {isEditing ? 'Edit Ledger Account' : 'New Ledger Account'}
               </h3>
               <X size={18} style={{ cursor: 'pointer', color: 'var(--text-secondary)' }} onClick={() => setShowModal(false)} />
             </div>
 
-            <form onSubmit={handleCreate}>
+            <form onSubmit={handleSubmit}>
               <div className="form-group">
                 <label>Ledger Account Name</label>
                 <input 
@@ -200,7 +245,7 @@ export default function Ledgers() {
                   Cancel
                 </button>
                 <button type="submit" className="btn-primary">
-                  Create Ledger
+                  {isEditing ? 'Update Ledger' : 'Create Ledger'}
                 </button>
               </div>
             </form>
