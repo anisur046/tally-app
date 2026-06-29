@@ -363,7 +363,7 @@ export const TallyProvider = ({ children }) => {
   }, [deviceId, deviceName, licensingMode, serverUrl]);
 
   // Activate license function
-  const activateLicense = async (newUserId, newKey) => {
+  const activateLicense = async (newUserId, newKey, force = false) => {
     const cleanUserId = newUserId.trim();
     const cleanKey = newKey.trim();
 
@@ -380,7 +380,8 @@ export const TallyProvider = ({ children }) => {
             userId: cleanUserId,
             licenseKey: cleanKey,
             deviceId,
-            deviceName
+            deviceName,
+            force
           }),
           signal: AbortSignal.timeout(5000)
         });
@@ -424,10 +425,21 @@ export const TallyProvider = ({ children }) => {
       if (serverEntry) {
         const isRegistered = serverEntry.devices.some(d => d.deviceId === deviceId);
         if (!isRegistered && serverEntry.devices.length >= serverEntry.deviceLimit) {
-          return {
-            success: false,
-            error: `Activation limit reached. This license is already in use on the maximum allowed ${serverEntry.deviceLimit} computer(s).`
-          };
+          if (force) {
+            // Free up a slot by removing the oldest active device(s)
+            while (serverEntry.devices.length >= serverEntry.deviceLimit) {
+              serverEntry.devices.shift();
+            }
+            // Register current device directly so background sync matches
+            serverEntry.devices.push({ deviceId, deviceName, activatedAt: Date.now() });
+            registry[cleanKey] = serverEntry;
+            saveCentralLicenses(registry);
+          } else {
+            return {
+              success: false,
+              error: `Activation limit reached. This license is already in use on the maximum allowed ${serverEntry.deviceLimit} computer(s).`
+            };
+          }
         }
       }
 

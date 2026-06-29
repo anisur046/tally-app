@@ -3,6 +3,19 @@ import cors from 'cors';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import os from 'os';
+
+function getNetworkIp() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -263,7 +276,7 @@ app.delete('/api/admin/licenses', (req, res) => {
 
 // Client: Activate & Verify seat limit
 app.post('/api/licenses/activate', (req, res) => {
-  const { userId, licenseKey, deviceId, deviceName } = req.body;
+  const { userId, licenseKey, deviceId, deviceName, force } = req.body;
 
   if (!userId || !licenseKey || !deviceId || !deviceName) {
     return res.status(400).json({ success: false, error: "Missing required parameters." });
@@ -319,10 +332,17 @@ app.post('/api/licenses/activate', (req, res) => {
 
   if (!isRegistered) {
     if (serverEntry.devices.length >= serverEntry.deviceLimit) {
-      return res.status(400).json({
-        success: false,
-        error: `Activation limit reached. Already in use on maximum allowed ${serverEntry.deviceLimit} computer(s).`
-      });
+      if (force) {
+        // Free up a slot by removing the oldest active device(s)
+        while (serverEntry.devices.length >= serverEntry.deviceLimit) {
+          serverEntry.devices.shift();
+        }
+      } else {
+        return res.status(400).json({
+          success: false,
+          error: `Activation limit reached. Already in use on maximum allowed ${serverEntry.deviceLimit} computer(s).`
+        });
+      }
     }
 
     // Add device seat
@@ -384,9 +404,10 @@ app.use((req, res) => {
 
 // Start listening
 app.listen(PORT, '0.0.0.0', () => {
+  const networkIp = getNetworkIp();
   console.log(`====================================================`);
   console.log(` TALLY LOCAL SERVER RUNNING`);
   console.log(` Local URL:   http://localhost/`);
-  console.log(` Network URL: http://10.179.213.170/`);
+  console.log(` Network URL: http://${networkIp}/`);
   console.log(`====================================================`);
 });

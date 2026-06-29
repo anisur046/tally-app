@@ -29,7 +29,7 @@ export default function ActivationScreen() {
     setErrorMsg('');
     setSuccessMsg('');
 
-    const res = await activateLicense(inputUserId, inputKey);
+    const res = await activateLicense(inputUserId, inputKey, true);
     if (res.success) {
       setSuccessMsg("Application activated successfully!");
     } else {
