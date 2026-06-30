@@ -33,6 +33,13 @@ export const GROUP_MAP = {
   [LEDGER_SUBGROUPS.INDIRECT_INCOMES]: LEDGER_GROUPS.INCOME
 };
 
+export const BASE_LEDGERS = [
+  { id: 'ledger-cash', name: 'Cash A/c', subgroup: LEDGER_SUBGROUPS.CASH, openingBalance: 0, balanceType: 'Dr' },
+  { id: 'ledger-bank', name: 'Bank A/c', subgroup: LEDGER_SUBGROUPS.BANK, openingBalance: 0, balanceType: 'Dr' },
+  { id: 'ledger-sales', name: 'Sales A/c', subgroup: LEDGER_SUBGROUPS.SALES, openingBalance: 0, balanceType: 'Cr' },
+  { id: 'ledger-purchase', name: 'Purchase A/c', subgroup: LEDGER_SUBGROUPS.PURCHASE, openingBalance: 0, balanceType: 'Dr' }
+];
+
 export const DEFAULT_LEDGERS = [
   { id: 'ledger-capital', name: 'Capital Account', subgroup: LEDGER_SUBGROUPS.CAPITAL, openingBalance: 1000000, balanceType: 'Cr' },
   { id: 'ledger-cash', name: 'Cash A/c', subgroup: LEDGER_SUBGROUPS.CASH, openingBalance: 50000, balanceType: 'Dr' },

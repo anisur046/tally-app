@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import { DEFAULT_LEDGERS, DEFAULT_STOCK_ITEMS, DEFAULT_TRANSACTIONS } from '../utils/mockData';
+import { BASE_LEDGERS, DEFAULT_LEDGERS, DEFAULT_STOCK_ITEMS, DEFAULT_TRANSACTIONS } from '../utils/mockData';
 import { validateLicenseKey, generateLicenseKey } from '../utils/licenseEngine';
 
 export const TallyContext = createContext();
@@ -57,9 +57,9 @@ export const TallyProvider = ({ children }) => {
     return defaultValue;
   };
 
-  const [ledgers, setLedgers] = useState(() => getInitialData('ledgers', DEFAULT_LEDGERS));
-  const [stockItems, setStockItems] = useState(() => getInitialData('stockItems', DEFAULT_STOCK_ITEMS));
-  const [transactions, setTransactions] = useState(() => getInitialData('transactions', DEFAULT_TRANSACTIONS));
+  const [ledgers, setLedgers] = useState(() => getInitialData('ledgers', BASE_LEDGERS));
+  const [stockItems, setStockItems] = useState(() => getInitialData('stockItems', []));
+  const [transactions, setTransactions] = useState(() => getInitialData('transactions', []));
 
   const [activeView, setActiveView] = useState('dashboard');
   const [companyDetails, setCompanyDetails] = useState(() => {
@@ -555,7 +555,7 @@ export const TallyProvider = ({ children }) => {
             localStorage.removeItem('tally_ledgers');
             setLedgers(JSON.parse(globalLedgers));
           } else {
-            setLedgers(DEFAULT_LEDGERS);
+            setLedgers(BASE_LEDGERS);
           }
         }
 
@@ -570,7 +570,7 @@ export const TallyProvider = ({ children }) => {
             localStorage.removeItem('tally_stockItems');
             setStockItems(JSON.parse(globalStock));
           } else {
-            setStockItems(DEFAULT_STOCK_ITEMS);
+            setStockItems([]);
           }
         }
 
@@ -585,7 +585,7 @@ export const TallyProvider = ({ children }) => {
             localStorage.removeItem('tally_transactions');
             setTransactions(JSON.parse(globalTx));
           } else {
-            setTransactions(DEFAULT_TRANSACTIONS);
+            setTransactions([]);
           }
         }
 
@@ -600,9 +600,9 @@ export const TallyProvider = ({ children }) => {
         setCompanyDetails(savedCompany ? JSON.parse(savedCompany) : defaultCompany);
       } else {
         // Reset to default on logout
-        setLedgers(DEFAULT_LEDGERS);
-        setStockItems(DEFAULT_STOCK_ITEMS);
-        setTransactions(DEFAULT_TRANSACTIONS);
+        setLedgers(BASE_LEDGERS);
+        setStockItems([]);
+        setTransactions([]);
         setCompanyDetails({
           name: 'Tally Accounting Solutions Ltd.',
           address: '404 Financial Tech Hub, Sector 62, Noida, India',
