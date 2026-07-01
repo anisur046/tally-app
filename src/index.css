@@ -1586,6 +1586,38 @@ button {
   margin-top: 12px;
 }
 
+/* Report Company Header Styles */
+.report-company-header {
+  text-align: center;
+  margin-bottom: 24px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.report-company-header h1 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 6px;
+}
+
+.report-company-header .address {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
+}
+
+.report-company-header .details {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.report-company-header .details span {
+  display: inline-block;
+}
+
 /* Print Media Styles */
 @media print {
   body {
@@ -1624,5 +1656,27 @@ button {
   .tally-table td {
     color: black !important;
     border-bottom: 1px solid #e5e7eb !important;
+  }
+  
+  /* Print overrides for company report header */
+  .report-company-header {
+    border-bottom: 2px solid #000 !important;
+    color: black !important;
+    margin-bottom: 20px !important;
+    padding-bottom: 16px !important;
+  }
+  .report-company-header h1 {
+    color: black !important;
+    font-size: 1.8rem !important;
+  }
+  .report-company-header .address,
+  .report-company-header .details {
+    color: #374151 !important;
+  }
+  .report-header h2 {
+    color: black !important;
+  }
+  .report-header p {
+    color: #4b5563 !important;
   }
 }

@@ -43,6 +43,21 @@ export default function Reports() {
     return `Period: ${fromStr} to ${toStr}`;
   };
 
+  const renderReportCompanyHeader = () => {
+    return (
+      <div className="report-company-header">
+        <h1>{companyDetails.name}</h1>
+        <p className="address">{companyDetails.address}</p>
+        <p className="details">
+          {companyDetails.gstin && <span><strong>GSTIN:</strong> {companyDetails.gstin}</span>}
+          {companyDetails.phone && <span> | <strong>Phone:</strong> {companyDetails.phone}</span>}
+          {companyDetails.email && <span> | <strong>Email:</strong> {companyDetails.email}</span>}
+          {companyDetails.website && <span> | <strong>Website:</strong> {companyDetails.website}</span>}
+        </p>
+      </div>
+    );
+  };
+
   // 1. Trial Balance Data (Cumulative up to toDate)
   const tb = getTrialBalance(ledgers, transactions, fromDate, toDate);
 
@@ -281,6 +296,7 @@ export default function Reports() {
       {/* Trial Balance Report */}
       {activeTab === 'trial' && (
         <div className="glass-card">
+          {renderReportCompanyHeader()}
           <div className="report-header">
             <div>
               <h2>Trial Balance Statement</h2>
@@ -351,6 +367,7 @@ export default function Reports() {
       {/* Profit & Loss Report */}
       {activeTab === 'pl' && (
         <div className="glass-card">
+          {renderReportCompanyHeader()}
           <div className="report-header">
             <div>
               <h2>Profit & Loss Account</h2>
@@ -526,6 +543,7 @@ export default function Reports() {
       {/* Balance Sheet Report */}
       {activeTab === 'bs' && (
         <div className="glass-card">
+          {renderReportCompanyHeader()}
           <div className="report-header">
             <div>
               <h2>Balance Sheet</h2>
@@ -595,6 +613,7 @@ export default function Reports() {
       {/* Stock Summary */}
       {activeTab === 'stock' && (
         <div className="glass-card">
+          {renderReportCompanyHeader()}
           <div className="report-header">
             <div>
               <h2>Stock Summary (FIFO Valuation)</h2>
@@ -664,6 +683,7 @@ export default function Reports() {
       {/* Day Book Transactions List */}
       {activeTab === 'daybook' && (
         <div className="glass-card">
+          {renderReportCompanyHeader()}
           <div className="report-header">
             <div>
               <h2>Day Book Entries</h2>

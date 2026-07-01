@@ -33,7 +33,7 @@ const saveGeneratedLicenses = (list) => {
 };
 
 export const TallyProvider = ({ children }) => {
-  const storedUserIdAtMount = localStorage.getItem('tally_license_userid') || '';
+  const storedUserIdAtMount = sessionStorage.getItem('tally_license_userid') || '';
 
   const [userId, setUserId] = useState(storedUserIdAtMount);
   const [loadedUserId, setLoadedUserId] = useState(storedUserIdAtMount);
@@ -67,6 +67,9 @@ export const TallyProvider = ({ children }) => {
       name: 'Tally Accounting Solutions Ltd.',
       address: '404 Financial Tech Hub, Sector 62, Noida, India',
       gstin: '09AAACT2468A1Z5',
+      phone: '+91 98765 43210',
+      email: 'info@tallysolutions.com',
+      website: 'www.tallysolutions.com',
       financialYear: '2026-2027'
     };
     if (storedUserIdAtMount) {
@@ -81,7 +84,7 @@ export const TallyProvider = ({ children }) => {
 
   // --- ADMIN STATE ---
   const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(() => {
-    return localStorage.getItem('tally_admin_logged_in') === 'true';
+    return sessionStorage.getItem('tally_admin_logged_in') === 'true';
   });
 
   const [generatedLicenses, setGeneratedLicenses] = useState(getGeneratedLicenses);
@@ -107,7 +110,7 @@ export const TallyProvider = ({ children }) => {
 
 
   const [licenseKey, setLicenseKey] = useState(() => {
-    return localStorage.getItem('tally_license_key') || '';
+    return sessionStorage.getItem('tally_license_key') || '';
   });
 
   const [activationState, setActivationState] = useState('unactivated');
@@ -166,8 +169,8 @@ export const TallyProvider = ({ children }) => {
 
   // Re-verify the license status
   const checkLicenseStatus = useCallback(async () => {
-    const storedKey = localStorage.getItem('tally_license_key');
-    const storedUserId = localStorage.getItem('tally_license_userid');
+    const storedKey = sessionStorage.getItem('tally_license_key');
+    const storedUserId = sessionStorage.getItem('tally_license_userid');
     
     if (!storedKey || !storedUserId) {
       setActivationState('unactivated');
@@ -220,7 +223,7 @@ export const TallyProvider = ({ children }) => {
       
       let activeKey = storedKey;
       if (matchingLicense && matchingLicense.key !== storedKey) {
-        localStorage.setItem('tally_license_key', matchingLicense.key);
+        sessionStorage.setItem('tally_license_key', matchingLicense.key);
         setLicenseKey(matchingLicense.key);
         activeKey = matchingLicense.key;
       }
@@ -335,8 +338,8 @@ export const TallyProvider = ({ children }) => {
   useEffect(() => {
     const handleStorageChange = (e) => {
       if (e.key === 'tally_central_licenses' || e.key === 'tally_license_key' || e.key === 'tally_license_userid' || e.key === 'tally_device_id' || e.key === 'tally_device_name' || e.key === 'tally_generated_licenses' || e.key === 'tally_licensing_mode' || e.key === 'tally_server_url') {
-        const storedKey = localStorage.getItem('tally_license_key') || '';
-        const storedUserId = localStorage.getItem('tally_license_userid') || '';
+        const storedKey = sessionStorage.getItem('tally_license_key') || '';
+        const storedUserId = sessionStorage.getItem('tally_license_userid') || '';
         const storedDeviceId = localStorage.getItem('tally_device_id');
         const storedDeviceName = localStorage.getItem('tally_device_name');
         const storedMode = localStorage.getItem('tally_licensing_mode');
@@ -388,8 +391,8 @@ export const TallyProvider = ({ children }) => {
 
         const data = await res.json();
         if (res.ok && data.success) {
-          localStorage.setItem('tally_license_key', cleanKey);
-          localStorage.setItem('tally_license_userid', data.payload.userId);
+          sessionStorage.setItem('tally_license_key', cleanKey);
+          sessionStorage.setItem('tally_license_userid', data.payload.userId);
           
           setLicenseKey(cleanKey);
           setUserId(data.payload.userId);
@@ -443,8 +446,8 @@ export const TallyProvider = ({ children }) => {
         }
       }
 
-      localStorage.setItem('tally_license_key', cleanKey);
-      localStorage.setItem('tally_license_userid', payload.userId);
+      sessionStorage.setItem('tally_license_key', cleanKey);
+      sessionStorage.setItem('tally_license_userid', payload.userId);
       
       setLicenseKey(cleanKey);
       setUserId(payload.userId);
@@ -454,7 +457,7 @@ export const TallyProvider = ({ children }) => {
 
   // Deactivate/Logout license function
   const deactivateLicense = async () => {
-    const storedKey = localStorage.getItem('tally_license_key');
+    const storedKey = sessionStorage.getItem('tally_license_key');
     if (storedKey) {
       if (licensingMode === 'server') {
         try {
@@ -482,8 +485,8 @@ export const TallyProvider = ({ children }) => {
       }
     }
 
-    localStorage.removeItem('tally_license_key');
-    localStorage.removeItem('tally_license_userid');
+    sessionStorage.removeItem('tally_license_key');
+    sessionStorage.removeItem('tally_license_userid');
     
     setLicenseKey('');
     setUserId('');
@@ -494,7 +497,7 @@ export const TallyProvider = ({ children }) => {
 
   // Revoke device remotely
   const revokeDevice = async (targetDeviceId) => {
-    const storedKey = localStorage.getItem('tally_license_key');
+    const storedKey = sessionStorage.getItem('tally_license_key');
     if (!storedKey) return;
     if (licensingMode === 'server') {
       try {
@@ -594,6 +597,9 @@ export const TallyProvider = ({ children }) => {
           name: 'Tally Accounting Solutions Ltd.',
           address: '404 Financial Tech Hub, Sector 62, Noida, India',
           gstin: '09AAACT2468A1Z5',
+          phone: '+91 98765 43210',
+          email: 'info@tallysolutions.com',
+          website: 'www.tallysolutions.com',
           financialYear: '2026-2027'
         };
         const savedCompany = localStorage.getItem(`tally_${userId}_companyDetails`);
@@ -607,6 +613,9 @@ export const TallyProvider = ({ children }) => {
           name: 'Tally Accounting Solutions Ltd.',
           address: '404 Financial Tech Hub, Sector 62, Noida, India',
           gstin: '09AAACT2468A1Z5',
+          phone: '+91 98765 43210',
+          email: 'info@tallysolutions.com',
+          website: 'www.tallysolutions.com',
           financialYear: '2026-2027'
         });
       }
@@ -822,7 +831,7 @@ export const TallyProvider = ({ children }) => {
         });
         const data = await res.json();
         if (res.ok && data.success) {
-          localStorage.setItem('tally_admin_logged_in', 'true');
+          sessionStorage.setItem('tally_admin_logged_in', 'true');
           setIsAdminLoggedIn(true);
           return { success: true };
         } else {
@@ -835,7 +844,7 @@ export const TallyProvider = ({ children }) => {
       }
     } else {
       if (password === 'Admin@123') {
-        localStorage.setItem('tally_admin_logged_in', 'true');
+        sessionStorage.setItem('tally_admin_logged_in', 'true');
         setIsAdminLoggedIn(true);
         return { success: true };
       }
@@ -844,7 +853,7 @@ export const TallyProvider = ({ children }) => {
   };
 
   const adminLogout = () => {
-    localStorage.removeItem('tally_admin_logged_in');
+    sessionStorage.removeItem('tally_admin_logged_in');
     setIsAdminLoggedIn(false);
     setActiveView('dashboard');
   };

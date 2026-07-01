@@ -2,6 +2,7 @@ import React, { useContext, useRef } from 'react';
 import { TallyContext } from '../context/TallyContext';
 import { 
   LayoutDashboard, 
+  Building2,
   Receipt, 
   BookOpen, 
   Package, 
@@ -36,6 +37,7 @@ export default function Sidebar() {
 
   const menuItems = [
     { id: 'dashboard', name: 'Dashboard', icon: LayoutDashboard },
+    { id: 'company_details', name: 'Company Details', icon: Building2 },
     { id: 'vouchers', name: 'Voucher Entry', icon: Receipt },
     { id: 'ledgers', name: 'Ledgers (Accounts)', icon: BookOpen },
     { id: 'inventory', name: 'Inventory (Stock)', icon: Package },

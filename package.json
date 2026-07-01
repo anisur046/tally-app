@@ -8,7 +8,8 @@
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
-    "server": "node server.js"
+    "server": "node server.js",
+    "build-exe": "npm run build && esbuild server.js --bundle --platform=node --format=cjs --outfile=server.cjs && pkg server.cjs --config pkg-config.json --target node18-win-x64 --output tally-app.exe"
   },
   "dependencies": {
     "cors": "^2.8.6",
@@ -21,7 +22,9 @@
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^6.0.2",
+    "esbuild": "^0.28.1",
     "oxlint": "^1.69.0",
+    "pkg": "^5.8.1",
     "vite": "^8.1.0"
   }
 }

@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Standalone builds
+server.cjs
+tally-app.exe
+

@@ -9,5 +9,18 @@
       "expiresAt": 1814258068154
     }
   ],
-  "central_registry": {}
+  "central_registry": {
+    "TALLY-eyJ1c2VySWQiOiJjbGllbnQxIiwiZGV2aWNlTGltaXQiOjEsInZhbGlkaXR5WWVhcnMiOjEsImNyZWF0ZWRBdCI6MTc4MjY1Nzk0NjM2MCwibm9uY2UiOiJuM3l2bDlwIiwic2lnbmF0dXJlIjoiNTZhNDVjMmMifQ==": {
+      "userId": "client1",
+      "deviceLimit": 1,
+      "expiresAt": 1814215546360,
+      "devices": [
+        {
+          "deviceId": "DEV-AYVX5",
+          "deviceName": "Workstation 1",
+          "activatedAt": 1782871417893
+        }
+      ]
+    }
+  }
 }

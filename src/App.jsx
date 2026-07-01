@@ -8,6 +8,7 @@ import Reports from './components/Reports';
 import LicenseManager from './components/LicenseManager';
 import ActivationScreen from './components/ActivationScreen';
 import AdminPortal from './components/AdminPortal';
+import CompanyDetails from './components/CompanyDetails';
 import { TallyContext, TallyProvider } from './context/TallyContext';
 import { BookOpen } from 'lucide-react';
 
@@ -51,6 +52,7 @@ function AppContent() {
         {/* View Switcher Routing */}
         <div style={{ flexGrow: 1 }}>
           {activeView === 'dashboard' && <Dashboard />}
+          {activeView === 'company_details' && <CompanyDetails />}
           {activeView === 'vouchers' && <Vouchers />}
           {activeView === 'ledgers' && <Ledgers />}
           {activeView === 'inventory' && <Inventory />}

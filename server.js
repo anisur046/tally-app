@@ -4,6 +4,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
+import { exec } from 'child_process';
 
 function getNetworkIp() {
   const interfaces = os.networkInterfaces();
@@ -17,8 +18,7 @@ function getNetworkIp() {
   return '127.0.0.1';
 }
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+const currentDir = typeof __dirname !== 'undefined' ? __dirname : path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const PORT = 80;
@@ -27,10 +27,10 @@ app.use(cors());
 app.use(express.json());
 
 // Serving built frontend assets
-app.use(express.static(path.join(__dirname, 'dist')));
+app.use(express.static(path.join(currentDir, 'dist')));
 
 // Database File Path
-const DB_FILE = path.join(__dirname, 'tally_server_db.json');
+const DB_FILE = path.join(process.cwd(), 'tally_server_db.json');
 
 // Helper to load/save database
 function loadDb() {
@@ -399,7 +399,7 @@ app.post('/api/licenses/deactivate', (req, res) => {
 
 // Fallback to index.html for Single-Page Routing in frontend
 app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+  res.sendFile(path.join(currentDir, 'dist', 'index.html'));
 });
 
 // Start listening
@@ -410,4 +410,14 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(` Local URL:   http://localhost/`);
   console.log(` Network URL: http://${networkIp}/`);
   console.log(`====================================================`);
+
+  // Auto-open browser on startup
+  const url = `http://localhost${PORT === 80 ? '' : `:${PORT}`}/`;
+  if (process.platform === 'win32') {
+    exec(`start ${url}`);
+  } else if (process.platform === 'darwin') {
+    exec(`open ${url}`);
+  } else {
+    exec(`xdg-open ${url}`);
+  }
 });
