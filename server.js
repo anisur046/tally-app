@@ -209,10 +209,6 @@ app.post('/api/admin/licenses/renew', (req, res) => {
 
   const lic = db.licenses[idx];
   const years = parseFloat(extraYears) || 1;
-  const newKey = generateLicenseKey(lic.userId, lic.deviceLimit, years);
-  if (!newKey) {
-    return res.status(500).json({ success: false, error: "Failed to generate renewal key signature." });
-  }
 
   const msInYear = 365.25 * 24 * 60 * 60 * 1000;
   let newExpiresAt;
@@ -224,24 +220,19 @@ app.post('/api/admin/licenses/renew', (req, res) => {
 
   const renewedLicense = {
     ...lic,
-    key: newKey,
     expiresAt: newExpiresAt,
     validityYears: Math.max(0.1, lic.validityYears + years)
   };
 
   db.licenses[idx] = renewedLicense;
 
-  // Migrate active devices
+  // Update active devices entry if it exists in the registry
   if (db.central_registry[oldKey]) {
-    db.central_registry[newKey] = {
-      ...db.central_registry[oldKey],
-      expiresAt: newExpiresAt
-    };
-    delete db.central_registry[oldKey];
+    db.central_registry[oldKey].expiresAt = newExpiresAt;
   }
 
   saveDb(db);
-  res.json({ success: true, key: newKey });
+  res.json({ success: true, key: oldKey });
 });
 
 // Admin & Client: Revoke device remotely
@@ -285,6 +276,9 @@ app.post('/api/licenses/activate', (req, res) => {
   const cleanUserId = userId.trim();
   const cleanKey = licenseKey.trim();
 
+  const db = loadDb();
+  const dbLic = db.licenses.find(x => x.key === cleanKey);
+
   // Validate signature
   const validation = validateLicenseKey(cleanKey);
   if (!validation.valid) {
@@ -292,6 +286,13 @@ app.post('/api/licenses/activate', (req, res) => {
   }
 
   const { payload } = validation;
+
+  // Override key payload fields if the database contains updated values
+  if (dbLic) {
+    payload.expiresAt = dbLic.expiresAt;
+    payload.deviceLimit = dbLic.deviceLimit;
+    payload.validityYears = dbLic.validityYears;
+  }
 
   if (cleanUserId.toLowerCase() !== payload.userId.toLowerCase()) {
     return res.status(400).json({
@@ -305,7 +306,6 @@ app.post('/api/licenses/activate', (req, res) => {
   }
 
   // Manage Device Registrations
-  const db = loadDb();
   let serverEntry = db.central_registry[cleanKey];
 
   if (!serverEntry) {
@@ -328,6 +328,14 @@ app.post('/api/licenses/activate', (req, res) => {
   }
 
   // Key already exists, check if device is registered
+  // Keep serverEntry up-to-date with current db values
+  let registryChanged = false;
+  if (serverEntry.expiresAt !== payload.expiresAt || serverEntry.deviceLimit !== payload.deviceLimit) {
+    serverEntry.expiresAt = payload.expiresAt;
+    serverEntry.deviceLimit = payload.deviceLimit;
+    registryChanged = true;
+  }
+
   const isRegistered = serverEntry.devices.some(d => d.deviceId === deviceId);
 
   if (!isRegistered) {
@@ -338,6 +346,9 @@ app.post('/api/licenses/activate', (req, res) => {
           serverEntry.devices.shift();
         }
       } else {
+        if (registryChanged) {
+          saveDb(db);
+        }
         return res.status(400).json({
           success: false,
           error: `Activation limit reached. Already in use on maximum allowed ${serverEntry.deviceLimit} computer(s).`
@@ -367,7 +378,7 @@ app.post('/api/licenses/activate', (req, res) => {
       return d;
     });
 
-    if (changed) {
+    if (changed || registryChanged) {
       serverEntry.devices = updatedDevices;
       db.central_registry[cleanKey] = serverEntry;
       saveDb(db);

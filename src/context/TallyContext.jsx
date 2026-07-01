@@ -219,14 +219,9 @@ export const TallyProvider = ({ children }) => {
     } else {
       // --- AUTO-RENEWAL OVER-THE-AIR SYNC ---
       const allGen = getGeneratedLicenses();
-      const matchingLicense = allGen.find(l => l.userId.toLowerCase() === storedUserId.toLowerCase());
+      const dbLic = allGen.find(x => x.key === storedKey);
       
       let activeKey = storedKey;
-      if (matchingLicense && matchingLicense.key !== storedKey) {
-        sessionStorage.setItem('tally_license_key', matchingLicense.key);
-        setLicenseKey(matchingLicense.key);
-        activeKey = matchingLicense.key;
-      }
 
       const res = validateLicenseKey(activeKey);
       if (!res.valid) {
@@ -236,6 +231,13 @@ export const TallyProvider = ({ children }) => {
       }
 
       const { payload } = res;
+
+      // Override key payload fields if the database contains updated values
+      if (dbLic) {
+        payload.expiresAt = dbLic.expiresAt;
+        payload.deviceLimit = dbLic.deviceLimit;
+        payload.validityYears = dbLic.validityYears;
+      }
 
       if (storedUserId.trim().toLowerCase() !== payload.userId.toLowerCase()) {
         setActivationState('invalid_key');
@@ -273,23 +275,24 @@ export const TallyProvider = ({ children }) => {
         return;
       }
 
+      // Check if device limits or expiresAt changed in the database
+      let registryChanged = false;
+      if (serverEntry.expiresAt !== payload.expiresAt || serverEntry.deviceLimit !== payload.deviceLimit) {
+        serverEntry.expiresAt = payload.expiresAt;
+        serverEntry.deviceLimit = payload.deviceLimit;
+        registryChanged = true;
+      }
+
       const isRegistered = serverEntry.devices.some(d => d.deviceId === deviceId);
 
       if (!isRegistered) {
         if (serverEntry.devices.length < serverEntry.deviceLimit) {
-          const updatedDevices = [...serverEntry.devices, { deviceId, deviceName, activatedAt: Date.now() }];
-          const newRegistry = {
-            ...registry,
-            [storedKey]: {
-              ...serverEntry,
-              devices: updatedDevices
-            }
-          };
-          saveCentralLicenses(newRegistry);
+          serverEntry.devices.push({ deviceId, deviceName, activatedAt: Date.now() });
+          registryChanged = true;
           setActivationState('activated');
           setLicenseDetails({
             ...payload,
-            registeredDevices: updatedDevices
+            registeredDevices: serverEntry.devices
           });
         } else {
           setActivationState('device_limit_exceeded');
@@ -299,18 +302,18 @@ export const TallyProvider = ({ children }) => {
           });
         }
       } else {
-        let changed = false;
+        let nameChanged = false;
         const updatedDevices = serverEntry.devices.map(d => {
           if (d.deviceId === deviceId && d.deviceName !== deviceName) {
-            changed = true;
+            nameChanged = true;
             return { ...d, deviceName };
           }
           return d;
         });
 
-        if (changed) {
-          registry[storedKey].devices = updatedDevices;
-          saveCentralLicenses(registry);
+        if (nameChanged || registryChanged) {
+          serverEntry.devices = updatedDevices;
+          registryChanged = true;
         }
 
         setActivationState('activated');
@@ -318,6 +321,10 @@ export const TallyProvider = ({ children }) => {
           ...payload,
           registeredDevices: updatedDevices
         });
+      }
+
+      if (registryChanged) {
+        saveCentralLicenses(registry);
       }
     }
   }, [deviceId, deviceName, licensingMode, serverUrl]);
@@ -407,12 +414,22 @@ export const TallyProvider = ({ children }) => {
         return { success: false, error: "Failed to connect to the licensing server. Please check the Server URL configuration." };
       }
     } else {
+      const allGen = getGeneratedLicenses();
+      const dbLic = allGen.find(x => x.key === cleanKey);
+
       const res = validateLicenseKey(cleanKey);
       if (!res.valid) {
         return { success: false, error: res.error };
       }
 
       const { payload } = res;
+
+      // Override key payload fields if the database contains updated values
+      if (dbLic) {
+        payload.expiresAt = dbLic.expiresAt;
+        payload.deviceLimit = dbLic.deviceLimit;
+        payload.validityYears = dbLic.validityYears;
+      }
 
       if (cleanUserId.toLowerCase() !== payload.userId.toLowerCase()) {
         return { success: false, error: `This key belongs to User: '${payload.userId}'. The entered Login ID does not match.` };
@@ -426,6 +443,13 @@ export const TallyProvider = ({ children }) => {
       const serverEntry = registry[cleanKey];
 
       if (serverEntry) {
+        let registryChanged = false;
+        if (serverEntry.expiresAt !== payload.expiresAt || serverEntry.deviceLimit !== payload.deviceLimit) {
+          serverEntry.expiresAt = payload.expiresAt;
+          serverEntry.deviceLimit = payload.deviceLimit;
+          registryChanged = true;
+        }
+
         const isRegistered = serverEntry.devices.some(d => d.deviceId === deviceId);
         if (!isRegistered && serverEntry.devices.length >= serverEntry.deviceLimit) {
           if (force) {
@@ -433,16 +457,24 @@ export const TallyProvider = ({ children }) => {
             while (serverEntry.devices.length >= serverEntry.deviceLimit) {
               serverEntry.devices.shift();
             }
-            // Register current device directly so background sync matches
             serverEntry.devices.push({ deviceId, deviceName, activatedAt: Date.now() });
-            registry[cleanKey] = serverEntry;
-            saveCentralLicenses(registry);
+            registryChanged = true;
           } else {
+            if (registryChanged) {
+              saveCentralLicenses(registry);
+            }
             return {
               success: false,
               error: `Activation limit reached. This license is already in use on the maximum allowed ${serverEntry.deviceLimit} computer(s).`
             };
           }
+        } else if (!isRegistered) {
+          serverEntry.devices.push({ deviceId, deviceName, activatedAt: Date.now() });
+          registryChanged = true;
+        }
+
+        if (registryChanged) {
+          saveCentralLicenses(registry);
         }
       }
 
@@ -766,6 +798,17 @@ export const TallyProvider = ({ children }) => {
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('tally_')) {
+        // Exclude system and licensing configuration keys
+        if (
+          key === 'tally_device_id' ||
+          key === 'tally_device_name' ||
+          key === 'tally_licensing_mode' ||
+          key === 'tally_server_url' ||
+          key === 'tally_central_licenses' ||
+          key === 'tally_generated_licenses'
+        ) {
+          continue;
+        }
         backup[key] = localStorage.getItem(key);
       }
     }
@@ -796,8 +839,18 @@ export const TallyProvider = ({ children }) => {
         const tallyKeys = Object.keys(parsed).filter(k => k.startsWith('tally_'));
         
         if (tallyKeys.length > 0) {
-          // Restore all keys to localStorage
+          // Restore all keys to localStorage, except system and licensing configuration keys
           tallyKeys.forEach(key => {
+            if (
+              key === 'tally_device_id' ||
+              key === 'tally_device_name' ||
+              key === 'tally_licensing_mode' ||
+              key === 'tally_server_url' ||
+              key === 'tally_central_licenses' ||
+              key === 'tally_generated_licenses'
+            ) {
+              return; // skip system-specific settings
+            }
             localStorage.setItem(key, parsed[key]);
           });
           alert('System backup restored successfully! The page will now reload to apply all data and license states.');
@@ -938,10 +991,6 @@ export const TallyProvider = ({ children }) => {
       }
 
       const years = parseFloat(extraYears) || 1;
-      const newKey = generateLicenseKey(lic.userId, lic.deviceLimit, years);
-      if (!newKey) {
-        return { success: false, error: "Failed to generate renewal key signature." };
-      }
 
       const msInYear = 365.25 * 24 * 60 * 60 * 1000;
       let newExpiresAt;
@@ -953,7 +1002,6 @@ export const TallyProvider = ({ children }) => {
 
       const renewedLicense = {
         ...lic,
-        key: newKey,
         expiresAt: newExpiresAt,
         validityYears: Math.max(0.1, lic.validityYears + years)
       };
@@ -962,15 +1010,14 @@ export const TallyProvider = ({ children }) => {
 
       const registry = getCentralLicenses();
       if (registry[oldKey]) {
-        registry[newKey] = {
+        registry[oldKey] = {
           ...registry[oldKey],
           expiresAt: newExpiresAt
         };
-        delete registry[oldKey];
         saveCentralLicenses(registry);
       }
 
-      return { success: true, key: newKey };
+      return { success: true, key: oldKey };
     }
   };
 
