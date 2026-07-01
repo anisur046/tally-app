@@ -4,9 +4,9 @@
       "key": "TALLY-eyJ1c2VySWQiOiJjbGllbnQxIiwiZGV2aWNlTGltaXQiOjEsInZhbGlkaXR5WWVhcnMiOjEsImNyZWF0ZWRBdCI6MTc4Mjg4Nzg5Nzk3MCwibm9uY2UiOiJ2dG13Z3MyIiwic2lnbmF0dXJlIjoiNjRlN2U2ZjIifQ==",
       "userId": "client1",
       "deviceLimit": 1,
-      "validityYears": 0.1,
+      "validityYears": 0.6,
       "createdAt": 1782700468154,
-      "expiresAt": 1782700468154
+      "expiresAt": 1798667791535
     }
   ],
   "central_registry": {
@@ -19,6 +19,18 @@
           "deviceId": "DEV-AYVX5",
           "deviceName": "Workstation 1",
           "activatedAt": 1782871417893
+        }
+      ]
+    },
+    "TALLY-eyJ1c2VySWQiOiJjbGllbnQxIiwiZGV2aWNlTGltaXQiOjEsInZhbGlkaXR5WWVhcnMiOjEsImNyZWF0ZWRBdCI6MTc4Mjg4Nzg5Nzk3MCwibm9uY2UiOiJ2dG13Z3MyIiwic2lnbmF0dXJlIjoiNjRlN2U2ZjIifQ==": {
+      "userId": "client1",
+      "deviceLimit": 1,
+      "expiresAt": 1798667791535,
+      "devices": [
+        {
+          "deviceId": "DEV-1H3C8",
+          "deviceName": "Workstation 1",
+          "activatedAt": 1782894219758
         }
       ]
     }

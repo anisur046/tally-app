@@ -302,7 +302,7 @@ app.post('/api/licenses/activate', (req, res) => {
   }
 
   if (Date.now() > payload.expiresAt) {
-    return res.status(400).json({ success: false, error: "This license key has expired." });
+    return res.status(400).json({ success: false, error: "login limit and peroid exceed, please contact Admin" });
   }
 
   // Manage Device Registrations
@@ -351,7 +351,7 @@ app.post('/api/licenses/activate', (req, res) => {
         }
         return res.status(400).json({
           success: false,
-          error: `Activation limit reached. Already in use on maximum allowed ${serverEntry.deviceLimit} computer(s).`
+          error: "login limit and peroid exceed, please contact Admin"
         });
       }
     }

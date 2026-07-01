@@ -54,13 +54,13 @@ export default function ActivationScreen() {
       case 'expired':
         return {
           title: "License Expired",
-          desc: `Your license key for user "${licenseDetails?.userId || 'n/a'}" has expired. Please contact your system administrator to buy or renew your license key.`,
+          desc: "login limit and peroid exceed, please contact Admin",
           type: "error"
         };
       case 'device_limit_exceeded':
         return {
           title: "Computer seat limit exceeded",
-          desc: `This license key has a maximum limit of ${licenseDetails?.deviceLimit} computer(s) and is already active on other workstations. Please ask your administrator to revoke a device from the central registry or buy additional seats.`,
+          desc: "login limit and peroid exceed, please contact Admin",
           type: "error"
         };
       case 'invalid_key':

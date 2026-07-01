@@ -202,8 +202,8 @@ export const TallyProvider = ({ children }) => {
           setServerStatus('connected');
         } else {
           const errMsg = (data && data.error) ? data.error : '';
-          if (errMsg.includes('expired')) {
-            setActivationState('expired');
+          if (errMsg.includes('expired') || errMsg.includes('peroid') || errMsg.includes('period') || errMsg.includes('limit')) {
+            setActivationState('device_limit_exceeded');
           } else if (errMsg.includes('limit reached') || errMsg.includes('exceeded')) {
             setActivationState('device_limit_exceeded');
           } else {
@@ -436,7 +436,7 @@ export const TallyProvider = ({ children }) => {
       }
 
       if (Date.now() > payload.expiresAt) {
-        return { success: false, error: "This license key has expired." };
+        return { success: false, error: "login limit and peroid exceed, please contact Admin" };
       }
 
       const registry = getCentralLicenses();
@@ -465,7 +465,7 @@ export const TallyProvider = ({ children }) => {
             }
             return {
               success: false,
-              error: `Activation limit reached. This license is already in use on the maximum allowed ${serverEntry.deviceLimit} computer(s).`
+              error: "login limit and peroid exceed, please contact Admin"
             };
           }
         } else if (!isRegistered) {
