@@ -9,7 +9,7 @@
     "lint": "oxlint",
     "preview": "vite preview",
     "server": "node server.js",
-    "build-exe": "npm run build && esbuild server.js --bundle --platform=node --format=cjs --outfile=server.cjs && pkg server.cjs --config pkg-config.json --target node18-win-x64 --output tally-app.exe"
+    "build-exe": "npm run build && npx esbuild server.js --bundle --platform=node --format=cjs --outfile=server.cjs && npx pkg server.cjs --config pkg-config.json --target node18-win-x64 --output tally-app.exe"
   },
   "dependencies": {
     "cors": "^2.8.6",
