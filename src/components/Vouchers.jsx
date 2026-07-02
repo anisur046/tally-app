@@ -43,8 +43,13 @@ export default function Vouchers() {
 
   // Sales / Purchase Inventory list
   const [itemRows, setItemRows] = useState([
-    { stockItemId: '', qty: '', rate: '', gstRate: 18 }
+    { stockItemId: '', qty: '', rate: '', gstRate: 18, amountWithGst: '' }
   ]);
+
+  const [isGstInclusive, setIsGstInclusive] = useState(false);
+  const [customerName, setCustomerName] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerMobile, setCustomerMobile] = useState('');
 
   // Recalculate Voucher Number on Type Change
   useEffect(() => {
@@ -63,7 +68,11 @@ export default function Vouchers() {
     setCrLedgerInput('');
     setSelectedCrLedgerId('');
     setNonInventoryAmount('');
-    setItemRows([{ stockItemId: '', qty: '', rate: '', gstRate: 18 }]);
+    setItemRows([{ stockItemId: '', qty: '', rate: '', gstRate: 18, amountWithGst: '' }]);
+    setIsGstInclusive(false);
+    setCustomerName('');
+    setCustomerAddress('');
+    setCustomerMobile('');
   };
 
   // Filter party ledgers for autosuggest
@@ -98,15 +107,36 @@ export default function Vouchers() {
     if (field === 'stockItemId') {
       const selectedItem = stockItems.find(i => i.id === value);
       if (selectedItem) {
-        updated[index].rate = vType === 'Sales' ? selectedItem.saleRate : selectedItem.purchaseRate;
-        updated[index].gstRate = selectedItem.gstRate;
+        const gst = selectedItem.gstRate;
+        updated[index].gstRate = gst;
+        const baseRate = vType === 'Sales' ? selectedItem.saleRate : selectedItem.purchaseRate;
+        if (isGstInclusive) {
+          const qty = Number(updated[index].qty) || 1;
+          const singleInclusive = baseRate * (1 + gst / 100);
+          updated[index].amountWithGst = (singleInclusive * qty).toFixed(2);
+          const restAmt = (singleInclusive * qty) / (1 + gst / 100);
+          updated[index].rate = qty > 0 ? (restAmt / qty).toFixed(4) : restAmt.toFixed(4);
+        } else {
+          updated[index].rate = baseRate;
+        }
       }
     }
+
+    // If inclusive mode, update rate whenever amountWithGst, gstRate, or qty changes
+    if (isGstInclusive) {
+      const qty = Number(updated[index].qty) || 1;
+      const amtWithGst = Number(updated[index].amountWithGst) || 0;
+      const gst = Number(updated[index].gstRate) || 0;
+      
+      const restAmt = amtWithGst / (1 + gst / 100);
+      updated[index].rate = qty > 0 ? (restAmt / qty).toFixed(4) : restAmt.toFixed(4);
+    }
+
     setItemRows(updated);
   };
 
   const addItemRow = () => {
-    setItemRows([...itemRows, { stockItemId: '', qty: '', rate: '', gstRate: 18 }]);
+    setItemRows([...itemRows, { stockItemId: '', qty: '', rate: '', gstRate: 18, amountWithGst: '' }]);
   };
 
   const removeItemRow = (index) => {
@@ -121,14 +151,21 @@ export default function Vouchers() {
     
     itemRows.forEach(row => {
       const qty = Number(row.qty) || 0;
-      const rate = Number(row.rate) || 0;
       const gst = Number(row.gstRate) || 0;
       
-      const lineCost = qty * rate;
-      const lineTax = lineCost * (gst / 100);
-      
-      subtotal += lineCost;
-      taxTotal += lineTax;
+      if (isGstInclusive) {
+        const amtWithGst = Number(row.amountWithGst) || 0;
+        const restAmt = amtWithGst / (1 + gst / 100);
+        const gstAmt = amtWithGst - restAmt;
+        subtotal += restAmt;
+        taxTotal += gstAmt;
+      } else {
+        const rate = Number(row.rate) || 0;
+        const lineCost = qty * rate;
+        const lineTax = lineCost * (gst / 100);
+        subtotal += lineCost;
+        taxTotal += lineTax;
+      }
     });
 
     return {
@@ -252,7 +289,10 @@ export default function Vouchers() {
       partyLedgerId: selectedPartyId || selectedDrLedgerId,
       items: transactionItems,
       ledgerPostings,
-      narration: narration.trim()
+      narration: narration.trim(),
+      customerName: isGstInclusive ? customerName.trim() : '',
+      customerAddress: isGstInclusive ? customerAddress.trim() : '',
+      customerMobile: isGstInclusive ? customerMobile.trim() : ''
     });
 
     // Calculate the next voucher number before state updates (offset by 2 as the transaction state hasn't updated yet)
@@ -368,29 +408,128 @@ export default function Vouchers() {
                   )}
                 </div>
 
+                {isGstInclusive && (
+                  <div className="form-row" style={{ marginTop: '16px', marginBottom: '16px' }}>
+                    <div className="form-group" style={{ flex: '2' }}>
+                      <label>Customer Name</label>
+                      <input 
+                        type="text" 
+                        placeholder="Enter Customer Name..." 
+                        className="form-control"
+                        value={customerName}
+                        onChange={(e) => setCustomerName(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: '2' }}>
+                      <label>Customer Address</label>
+                      <input 
+                        type="text" 
+                        placeholder="Enter Customer Address..." 
+                        className="form-control"
+                        value={customerAddress}
+                        onChange={(e) => setCustomerAddress(e.target.value)}
+                      />
+                    </div>
+                    <div className="form-group" style={{ flex: '1' }}>
+                      <label>Customer Mobile No</label>
+                      <input 
+                        type="text" 
+                        placeholder="Mobile No..." 
+                        className="form-control"
+                        value={customerMobile}
+                        onChange={(e) => setCustomerMobile(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Inventory Item Selection Grid */}
                 <div style={{ marginTop: '24px', marginBottom: '24px' }}>
-                  <h4 style={{ fontSize: '0.9rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-secondary)' }}>
-                    Inventory Items List
-                  </h4>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                    <h4 style={{ fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                      Inventory Items List
+                    </h4>
+                    <label style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.03em' }}>
+                      <input 
+                        type="checkbox" 
+                        checked={isGstInclusive} 
+                        onChange={(e) => {
+                          const val = e.target.checked;
+                          setIsGstInclusive(val);
+                          // Convert existing rows
+                          const updated = itemRows.map(row => {
+                            const qty = Number(row.qty) || 1;
+                            const gst = Number(row.gstRate) || 18;
+                            if (val) {
+                              // Standard -> Inclusive
+                              const rate = Number(row.rate) || 0;
+                              const amt = qty * rate * (1 + gst / 100);
+                              return {
+                                ...row,
+                                amountWithGst: amt.toFixed(2),
+                                rate: rate.toFixed(4)
+                              };
+                            } else {
+                              // Inclusive -> Standard
+                              const amtWithGst = Number(row.amountWithGst) || 0;
+                              const restAmt = amtWithGst / (1 + gst / 100);
+                              const rate = restAmt / qty;
+                              return {
+                                ...row,
+                                rate: rate.toFixed(2)
+                              };
+                            }
+                          });
+                          setItemRows(updated);
+                        }}
+                        style={{ width: '16px', height: '16px', accentColor: 'var(--color-accent)' }}
+                      />
+                      Inclusive of GST Mode
+                    </label>
+                  </div>
                   
-                  <div className="item-grid-header">
+                  <div className={isGstInclusive ? "item-grid-header-inclusive" : "item-grid-header"}>
                     <div>Stock Item</div>
                     <div className="text-right">Quantity</div>
-                    <div className="text-right">Rate / Unit</div>
-                    <div className="text-center">GST %</div>
-                    <div className="text-right">Total Amount</div>
+                    {isGstInclusive ? (
+                      <>
+                        <div className="text-right">Amt (with GST)</div>
+                        <div className="text-center">GST %</div>
+                        <div className="text-right">GST Amt</div>
+                        <div className="text-right">Rest Amt</div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="text-right">Rate / Unit</div>
+                        <div className="text-center">GST %</div>
+                        <div className="text-right">Total Amount</div>
+                      </>
+                    )}
                     <div className="text-center">Action</div>
                   </div>
 
                   {itemRows.map((row, idx) => {
-                    const selectedItem = stockItems.find(i => i.id === row.stockItemId);
-                    const rowQty = Number(row.qty) || 0;
-                    const rowRate = Number(row.rate) || 0;
-                    const amount = rowQty * rowRate;
+                    const rowQty = Number(row.qty) || 1;
+                    let amount = 0;
+                    let gstAmt = 0;
+                    let restAmt = 0;
+
+                    if (isGstInclusive) {
+                      const amtWithGst = Number(row.amountWithGst) || 0;
+                      const gstRate = Number(row.gstRate) || 0;
+                      restAmt = amtWithGst / (1 + gstRate / 100);
+                      gstAmt = amtWithGst - restAmt;
+                      amount = restAmt;
+                    } else {
+                      const rowRate = Number(row.rate) || 0;
+                      amount = rowQty * rowRate;
+                      const gstRate = Number(row.gstRate) || 0;
+                      gstAmt = amount * (gstRate / 100);
+                      restAmt = amount;
+                    }
 
                     return (
-                      <div key={idx} className="item-grid-row">
+                      <div key={idx} className={isGstInclusive ? "item-grid-row-inclusive" : "item-grid-row"}>
                         <div>
                           <select 
                             className="form-control"
@@ -409,29 +548,67 @@ export default function Vouchers() {
                             type="number" 
                             className="form-control text-right" 
                             style={{ padding: '6px' }}
-                            placeholder="0"
+                            placeholder="1"
                             value={row.qty}
                             onChange={(e) => handleItemRowChange(idx, 'qty', e.target.value)}
-                            min="0"
+                            min="1"
                           />
                         </div>
-                        <div>
-                          <input 
-                            type="number" 
-                            className="form-control text-right" 
-                            style={{ padding: '6px' }}
-                            placeholder="0.00"
-                            value={row.rate}
-                            onChange={(e) => handleItemRowChange(idx, 'rate', e.target.value)}
-                            min="0"
-                          />
-                        </div>
-                        <div className="text-center">
-                          <span style={{ fontSize: '0.85rem' }}>{row.gstRate}%</span>
-                        </div>
-                        <div className="text-right" style={{ fontWeight: 600, fontFamily: 'monospace' }}>
-                          {formatCurrency(amount)}
-                        </div>
+                        {isGstInclusive ? (
+                          <>
+                            <div>
+                              <input 
+                                type="number" 
+                                className="form-control text-right" 
+                                style={{ padding: '6px' }}
+                                placeholder="0.00"
+                                value={row.amountWithGst || ''}
+                                onChange={(e) => handleItemRowChange(idx, 'amountWithGst', e.target.value)}
+                                min="0"
+                                step="any"
+                              />
+                            </div>
+                            <div>
+                              <input 
+                                type="number" 
+                                className="form-control text-center" 
+                                style={{ padding: '6px' }}
+                                placeholder="18"
+                                value={row.gstRate}
+                                onChange={(e) => handleItemRowChange(idx, 'gstRate', e.target.value)}
+                                min="0"
+                                max="100"
+                              />
+                            </div>
+                            <div className="text-right" style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+                              {formatCurrency(gstAmt)}
+                            </div>
+                            <div className="text-right" style={{ fontWeight: 600, fontFamily: 'monospace', fontSize: '0.85rem' }}>
+                              {formatCurrency(restAmt)}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <div>
+                              <input 
+                                type="number" 
+                                className="form-control text-right" 
+                                style={{ padding: '6px' }}
+                                placeholder="0.00"
+                                value={row.rate}
+                                onChange={(e) => handleItemRowChange(idx, 'rate', e.target.value)}
+                                min="0"
+                                step="any"
+                              />
+                            </div>
+                            <div className="text-center">
+                              <span style={{ fontSize: '0.85rem' }}>{row.gstRate}%</span>
+                            </div>
+                            <div className="text-right" style={{ fontWeight: 600, fontFamily: 'monospace' }}>
+                              {formatCurrency(amount)}
+                            </div>
+                          </>
+                        )}
                         <div className="text-center">
                           <button 
                             type="button" 
